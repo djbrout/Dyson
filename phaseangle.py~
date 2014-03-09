@@ -1,0 +1,101 @@
+import numpy as np
+import matplotlib.pylab as plt
+from pylab import *
+import scipy
+import scipy.fftpack
+import rdcol2 as rd
+from scipy.signal import *
+
+def calc_pa(signal1,signal2,timestep):
+
+	
+	
+	maxn = np.zeros(len(signal1)) + max(signal1)
+	signal1 /= maxn
+	
+	maxn = np.zeros(len(signal2)) + max(signal2)
+	signal2/= maxn	
+
+        figure(0)
+	plot(arange(len(signal1)),signal1,color='b')
+	plot(arange(len(signal2)),signal2,color='g')
+	savefig("signals.pdf")
+        timestep_offset = np.correlate(signal1,signal2,"full")
+        figure(1)
+        plot(arange(0.0, len(timestep_offset)),timestep_offset)
+        savefig("crosscorr.pdf")
+
+	ind = np.argmax(timestep_offset)
+	time_delay = -timestep*((len(timestep_offset)/2.0) - ind)
+
+        figure(7)
+	plot(arange(len(signal1)),signal1,color='b')
+	plot(arange(len(signal2))-(len(signal1)-ind),signal2,color='g')
+	savefig("signals_corrected.pdf")
+	print "ind "+str(ind)
+
+	FFT = abs(scipy.fft(signal1))
+	freqs = scipy.fftpack.fftfreq(len(signal1), t[1]-t[0])
+
+	FFT = FFT[freqs > 0]
+	freqs = freqs[freqs > 0]
+
+	total_freq = 0.0
+	total_counts = 0.0
+	counter = -1
+	for i in freqs:
+		counter = counter + 1
+		if i > 0.0:
+			total_freq = total_freq + i*FFT[counter]
+			#print str(i) + "\t" + str(FFT[counter])
+			total_counts = total_counts + float(FFT[counter])
+		#if FFT[counter] > 0.1:
+		#print  str(i) + "\t" + str(FFT[counter])
+	
+	print "counts "+ str(total_counts)
+	print "total freq "+str(total_freq)
+	avg_freq = total_freq/total_counts
+	peak_freq = freqs[np.argmax(abs(FFT))]
+
+	figure(2)
+	plot(freqs,FFT)
+	xlabel("Hz")
+	ylabel("Amplitdue")
+	savefig("fft.pdf")
+
+	#print time_delay
+	#print "avg "+str(avg_freq)
+	#print "peak "+str(peak_freq)
+
+	phase_angle = 360*avg_freq*time_delay
+	print "Avg freq phase angle: "+str(phase_angle)
+	phase_angle = 360*peak_freq*time_delay
+	print "Peak freq phase angle: " + str(phase_angle)
+	
+	return phase_angle
+
+
+def create_windows_feed_pa(signal1,signal2,timestep):
+	find_peaks_cwt()
+
+t = arange(0.0, 5.0, 0.001)
+s1 = sin(2*pi*t)
+s2 = sin(2*pi*(t+.5))
+
+timestep = 0.001
+
+aa = rd.read("Austin_Test_1.csv",14,18)
+WheelLoadFL= aa['"Wheel Load FL"']
+WLFL = []
+for i in WheelLoadFL:
+	WLFL.append(float(i.replace('"', "")))
+DamperPosFL=aa['"Damper Pos FL"']
+DPFL = []
+for i in DamperPosFL:
+	DPFL.append(float(i.replace('"', "")))
+
+print WLFL[0:10]
+print DPFL[0:10]
+phase_angle = calc_pa(WLFL[20000:20200],DPFL[20000:20200],1.0/200.0)
+#phase_angle = calc_pa(s1,s2,timestep)
+
